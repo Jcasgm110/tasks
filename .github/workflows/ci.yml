@@ -61,3 +61,24 @@ jobs:
       - name: Limpar
         if: always()
         run: docker compose down -v
+  publicar:
+    needs: [teste, compose]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Construir e publicar
+        run: |
+          IMAGE=ghcr.io/jcasgm110/tasks-api
+          SHA=${GITHUB_SHA::7}
+          docker build -t $IMAGE:$SHA -t $IMAGE:latest ./app
+          docker push $IMAGE:$SHA
+          docker push $IMAGE:latest      
