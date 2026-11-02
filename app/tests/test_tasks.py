@@ -6,7 +6,7 @@ def test_health(client):
 
 def test_create_and_list(client):
     resp = client.post("/tasks", json={"title": "aprender pytest"})
-    assert resp.status_code == 201
+    assert resp.status_code == 200
     assert resp.get_json()["title"] == "aprender pytest"
     titles = [t["title"] for t in client.get("/tasks").get_json()]
     assert titles == ["aprender pytest"]

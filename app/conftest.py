@@ -23,7 +23,7 @@ def _create_test_db():
 
 _create_test_db()
 
-from app import create_app, get_conn  # noqa: E402
+from app import create_app, get_conn
 
 
 @pytest.fixture()

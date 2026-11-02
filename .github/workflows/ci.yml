@@ -1,0 +1,63 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  teste:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: tasks
+          POSTGRES_PASSWORD: so-para-testes
+          POSTGRES_DB: tasksdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tasks -d tasksdb"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      POSTGRES_USER: tasks
+      POSTGRES_PASSWORD: so-para-testes
+      POSTGRES_DB: tasksdb
+      DB_HOST: localhost
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Instalar dependências
+        run: pip install -r app/requirements-dev.txt
+      - name: Lint
+        run: ruff check app
+      - name: Testes
+        working-directory: app
+        run: pytest -v
+
+  compose:
+    needs: teste
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Levantar com Compose
+        run: |
+          cp .env.example .env
+          docker compose up -d --build
+      - name: Testar a API
+        run: |
+          curl --fail --retry 15 --retry-delay 2 --retry-all-errors http://localhost:5000/health
+          curl --fail -X POST http://localhost:5000/tasks -H "Content-Type: application/json" -d '{"title":"ci"}'
+          curl --fail http://localhost:5000/tasks
+      - name: Logs em caso de falha
+        if: failure()
+        run: docker compose logs
+      - name: Limpar
+        if: always()
+        run: docker compose down -v
